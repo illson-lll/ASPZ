@@ -281,4 +281,45 @@ root@215c11034d29:/PR3# ./fcopy big_file.txt output.txt
 File size limit exceeded   (core dumped) ./fcopy big_file.txt output.txt
 root@215c11034d29:/PR3# 
 ```
+###Завдання 3.6
+Напишіть програму, що демонструє використання обмеження (max stack segment size). Підказка: рекурсивна програма активно використовує стек.
+```C
+#include <stdio.h>
+#include <stdlib.h>
 
+void recursive_function(int depth) {
+    char stack_buffer[10240];
+
+    stack_buffer[0] = (char)(depth % 255);
+
+    if (depth % 10 == 0) {
+        printf("depth: %d\n", depth);
+    }
+
+    recursive_function(depth + 1);
+}
+
+int main() {
+    recursive_function(1);
+    return 0;
+}
+```
+```bash
+root@f0e6014580e8:/PR3# ulimit -s 8192
+root@f0e6014580e8:/PR3# ./a.out 
+...
+depth: 750
+depth: 760
+depth: 770
+depth: 780
+depth: 790
+depth: 800
+depth: 810
+Segmentation fault         (core dumped) ./a.out
+
+root@b88a5c361ecd:/PR3# ulimit -s 100
+root@b88a5c361ecd:/PR3# ./a.out  
+Segmentation fault         (core dumped) ./a.out
+
+root@b88a5c361ecd:/PR3# 
+```
