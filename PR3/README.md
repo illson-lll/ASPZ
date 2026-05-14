@@ -202,3 +202,83 @@ Success: 156986.
 Killed
 ```
 Використовуючи ulimit -t 1, програма встигла провести 156986 ітерацій. 
+
+###Завдання 3.5
+Напишіть програму для копіювання одного іменованого файлу в інший. Імена файлів передаються у вигляді аргументів.
+Програма має:
+перевіряти, чи передано два аргументи, інакше виводити "Program need two arguments";
+перевіряти доступність першого файлу для читання, інакше виводити "Cannot open file .... for reading";
+перевіряти доступність другого файлу для запису, інакше виводити "Cannot open file .... for writing";
+обробляти ситуацію перевищення обмеження на розмір файлу.
+
+```C
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+
+#define BUFFER_SIZE 8192
+
+int main(int argc, char *argv[]){
+    if(argc !=3){
+        fprintf(stderr, "Program need two arguments\n");
+        return 1;
+    }
+
+    char *src_path = argv[1];
+    char *dest_path = argv[2];
+
+    FILE *src_f, *dest_f;
+    src_f = fopen(src_path,"rb");
+    if(src_f==NULL){
+        printf("Cannot open file %s for reading.\n",src_path);
+        return 1;
+    }
+
+    dest_f = fopen(argv[2], "wb");
+    if (dest_f == NULL) {
+        printf("Cannot open file %s for writing.\n", argv[2]);
+        fclose(dest_f);
+        return 1;
+    }
+
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes_read, bytes_written;
+
+    while ((bytes_read = fread(buffer, 1, BUFFER_SIZE, src_f)) > 0) {
+        bytes_written = fwrite(buffer, 1, bytes_read, dest_f);
+        if (bytes_written < bytes_read) {
+            if (errno == EFBIG) {
+                fprintf(stderr, "Error: File size limit exceeded\n");
+            } else {
+                fprintf(stderr, "Error during writing to %s\n", dest_path);
+            }
+            fclose(src_f);
+            fclose(dest_f);
+            return 1;
+        }
+    }
+    fclose(src_f);
+    fclose(dest_f);
+    return 0;
+}
+```
+Вивід
+```bash
+root@ec81070f7518:/PR3# ./fcopy
+Program need two arguments
+root@ec81070f7518:/PR3# echo "Hello" > input.txt
+root@ec81070f7518:/PR3# ./fcopy input.txt output.txt
+root@ec81070f7518:/PR3# cat output.txt
+Hello
+root@ec81070f7518:/PR3# ./fcopy input2.txt output.txt
+Cannot open file input2.txt for reading.
+root@215c11034d29:/PR3# dd if=/dev/urandom of=big_file.txt bs=1k count=100
+100+0 records in
+100+0 records out
+102400 bytes (102 kB, 100 KiB) copied, 0.000841781 s, 102 MB/s
+root@215c11034d29:/PR3# ulimit -f 10
+root@215c11034d29:/PR3# ./fcopy big_file.txt output.txt
+File size limit exceeded   (core dumped) ./fcopy big_file.txt output.txt
+root@215c11034d29:/PR3# 
+```
+
