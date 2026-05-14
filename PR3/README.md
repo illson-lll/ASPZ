@@ -135,3 +135,70 @@ root@e6279fe86d31:/PR3# ls -l output.txt
 -rw-r--r-- 1 root root 10240 May 14 22:31 output.txt
 root@e6279fe86d31:/PR3#
 ```
+###Завдання 3.4
+Напишіть програму, що імітує лотерею, вибираючи 7 різних цілих чисел у діапазоні від 1 до 49 і ще 6 з 36. Встановіть обмеження на час ЦП (max CPU time) і генеруйте результати вибору чисел (7 із 49, 6 із 36).
+```C
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <signal.h>
+#include <unistd.h>
+
+void handle_sigxcpu(int sig) {
+    fprintf(stderr,"Killed\n"), sig);
+    exit(0);
+}
+
+void print_lottery(int count, int max_val) {
+    printf("%d (1-%d): ", count, max_val);
+    for (int i = 0; i < count; i++) {
+        printf("%d ", (rand() % max_val) + 1);
+    }
+    printf("\n");
+}
+
+int main() {
+    signal(SIGXCPU, handle_sigxcpu);
+    srand(time(NULL));
+    unsigned long iteration = 0;
+
+    while (1) {
+        iteration++;
+        print_lottery(7, 49);
+        print_lottery(6, 36);
+        printf("Success: %lu.\n", iteration);
+    }
+    return 0;
+}
+```
+Вивід:
+```bash
+Success: 156978.
+7 (1-49): 28 13 41 37 42 14 11 
+6 (1-36): 19 11 22 18 28 13 
+Success: 156979.
+7 (1-49): 16 4 26 29 37 43 41 
+6 (1-36): 7 6 20 25 25 33 
+Success: 156980.
+7 (1-49): 2 34 17 48 27 49 16 
+6 (1-36): 21 10 15 35 25 13 
+Success: 156981.
+7 (1-49): 17 10 9 47 24 24 1 
+6 (1-36): 21 18 32 11 30 18 
+Success: 156982.
+7 (1-49): 47 16 43 5 21 1 38 
+6 (1-36): 35 32 14 5 8 14 
+Success: 156983.
+7 (1-49): 34 42 28 36 17 44 1 
+6 (1-36): 8 31 29 5 35 14 
+Success: 156984.
+7 (1-49): 13 39 27 16 47 24 37 
+6 (1-36): 30 2 13 1 1 12 
+Success: 156985.
+7 (1-49): 10 36 37 33 29 26 26 
+6 (1-36): 35 10 14 15 16 21 
+Success: 156986.
+7 (1-49): 3 41 33 5 20 1 48 
+Killed
+```
+Використовуючи ulimit -t 1, програма встигла провести 156986 ітерацій. 
