@@ -98,7 +98,6 @@ illson@nobara-pc:~/Documents/ASPZ/PR2$ size a.out
 Сегмент BSS призначений лише для глобальних та статичних змінних, та він нічого не важить в пам'яті. Саме тому варто не заповнювати дані нулями без необхідності. 
 Переносивши дані масиву в всередину функції, вони перестали бути у виконуваному файлі, і значення bss знову стало 4 замість 4032. 
 
-
 ### Завдання 2.3
 Скомпілюйте й запустіть тестову програму, щоб визначити приблизне
 розташування стека у вашій системі:
@@ -117,3 +116,110 @@ illson@nobara-pc:~/Documents/ASPZ/PR2$ size a.out
 Збільшіть розмір стека, викликавши функцію й оголосивши кілька
 великих локальних масивів. Яка зараз адреса вершини стека?
 
+```bash
+illson@nobara-pc:~/Documents/ASPZ/PR2$ ./a.out
+Text near: 0x4011f0
+Data near: 0x403028
+BSS near: 0x403030
+Heap near:     0x118eb310
+The stack top is near    0x7fff53a986a4
+Stack after array near:  0x7fff53a9869c
+```
+Тексту є найнижча адреса у вашому списку; Знаходиться трохи вище за текст; BSS іде після даних; Та heap розташована найвище від статичних данних;
+Початкова вершина стека 0x7fff53a986a4
+Адреса після масиву: 0x7fff53a9869c
+Отже стек росте вниз.
+
+
+### Завдання 2.4
+Порівняння GDB та gstack 
+```C
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+
+#define MSG "\nIn function %20s; &localvar = %p\n"
+
+static void bar_is_now_closed(void) {
+    int localvar = 5;
+    printf(MSG, __FUNCTION__, &localvar);
+    printf("\n Now blocking on pause()...\n");
+    pause();
+}
+
+static void bar(void) {
+    int localvar = 5;
+    printf(MSG, __FUNCTION__, &localvar);
+    bar_is_now_closed();
+}
+
+static void foo(void) {
+    int localvar = 5;
+    printf(MSG, __FUNCTION__, &localvar);
+    bar();
+}
+
+int main(int argc, char **argv) {
+    int localvar = 5;
+    printf(MSG, __FUNCTION__, &localvar);
+    
+    foo();
+    
+    return EXIT_SUCCESS;
+}
+```
+Вивід:
+```bash
+illson@nobara-pc:~/Documents/ASPZ/PR2$ ./a.out
+
+In function                 main; &localvar = 0x7ffd90dfe4bc
+
+In function                  foo; &localvar = 0x7ffd90dfe48c
+
+In function                  bar; &localvar = 0x7ffd90dfe46c
+
+In function    bar_is_now_closed; &localvar = 0x7ffd90dfe44c
+
+ Now blocking on pause()...
+```
+Стек іде в низ.
+```bash
+illson@nobara-pc:~/Documents/ASPZ/PR2$ gstack 25253
+Thread 1 (Thread 0x7fa5c6dd4740 (LWP 25253) "a.out"):
+#0  0x00007fa5c6e45bbe in __internal_syscall_cancel () from /lib64/libc.so.6
+#1  0x00007fa5c6e45be4 in __syscall_cancel () from /lib64/libc.so.6
+#2  0x00007fa5c6ea2421 in pause () from /lib64/libc.so.6
+#3  0x00000000004004bf in bar_is_now_closed ()
+#4  0x00000000004004f1 in bar ()
+#5  0x0000000000400523 in foo ()
+#6  0x000000000040055c in main ()
+illson@nobara-pc:~/Documents/ASPZ/PR2$ sudo gdb -q -p 25253
+Attaching to process 25253
+Reading symbols from /home/illson/Documents/ASPZ/PR2/a.out...
+(No debugging symbols found in /home/illson/Documents/ASPZ/PR2/a.out)
+Reading symbols from /lib64/libc.so.6...
+(No debugging symbols found in /lib64/libc.so.6)
+Reading symbols from /lib64/ld-linux-x86-64.so.2...
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib64/libthread_db.so.1".
+0x00007fa5c6e45bbe in __internal_syscall_cancel () from /lib64/libc.so.6
+Missing rpms, try: dnf --enablerepo='*debug*' install glibc-debuginfo-2.42-12.fc43.x86_64
+(gdb) bt
+#0  0x00007fa5c6e45bbe in __internal_syscall_cancel () from /lib64/libc.so.6
+#1  0x00007fa5c6e45be4 in __syscall_cancel () from /lib64/libc.so.6
+#2  0x00007fa5c6ea2421 in pause () from /lib64/libc.so.6
+#3  0x00000000004004bf in bar_is_now_closed ()
+#4  0x00000000004004f1 in bar ()
+#5  0x0000000000400523 in foo ()
+#6  0x000000000040055c in main ()
+(gdb)
+```
+Аналіз від gstack та gdb показав ідентичний ланцюжок викликів: програма заблокована на системному виклику pause(), який був викликаний послідовно через main -> foo -> bar -> bar_is_now_closed. Це демонструє структуру стека, де кожен виклик створює новий кадр, причому main залишається в основі стека, а поточна виконувана функція знаходиться на його вершині.
+### Завдання 2.5
+Відомо, що при виклику процедур і поверненні з них процесор
+використовує стек.Чи можна в такій схемі обійтися без лічильника команд
+(IP), використовуючи замість нього вершину стека? Обґрунтуйте свою
+відповідь та наведіть приклади.
+
+Відповідь:
+Використання стека замість IP є неефективним, оскільки стек не пристосований для нелінійного керування програмою. У такій моделі реалізація циклів вимагала б безкінечного дублювання коду, бо виконані інструкції просто зникали б зі стека. Крім того, відсутність механізму довільного доступу, який є у IP, унеможливлює швидкі переходи та складні умовні розгалуження, обмежуючи логіку програми лише строгою послідовністю дій.
