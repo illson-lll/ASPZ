@@ -131,5 +131,7 @@ root@e6279fe86d31:/PR3# gcc -Wall dice.c
 root@e6279fe86d31:/PR3# ulimit -f 10
 root@e6279fe86d31:/PR3# ./a.out 
 File size limit exceeded   (core dumped) ./a.out
-root@e6279fe86d31:/PR3# 
+root@e6279fe86d31:/PR3# ls -l output.txt 
+-rw-r--r-- 1 root root 10240 May 14 22:31 output.txt
+root@e6279fe86d31:/PR3#
 ```
