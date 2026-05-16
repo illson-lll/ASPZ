@@ -77,3 +77,137 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 Джерела:
 https://www.kernel.org/doc/Documentation/x86/x86_64/mm.txt
 https://www.bottomupcs.com/ch06s02.html
+
+### Завдання 4.2
+Що станеться, якщо передати malloc(3) від’ємний аргумент? Напишіть тестовий випадок, який обчислює кількість виділених байтів за формулою num = xa * xb. Що буде, якщо num оголошене як цілочисельна змінна зі знаком, а результат множення призведе до переповнення? Як себе поведе malloc(3)? Запустіть програму на x86_64 і x86.
+```C
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h> 
+
+int main(){
+    printf("Розмір size_t: %zu байтів %zu бітів\n",sizeof(size_t), sizeof(size_t) * 8);
+        
+    int xa = 5000000;
+    int xb = 5000000;
+
+    int num = xa * xb; 
+
+    printf("Значення xa: %d\n", xa);
+    printf("Значення xb: %d\n", xb);
+    printf("Результат xa * xb (num): %d\n", num);
+
+    printf("size_t num: %zu байтів\n", (size_t)num);
+
+    printf("Спроба виділення пам'яті...\n");
+    void *p = malloc(num);
+
+    if (p == NULL) {
+        printf("Malloc повернув NULL\n");
+    } else {
+        printf("Успіх!");
+        free(p); 
+    }
+    return 0;
+}
+```
+```bash
+illson@nobara-pc:~/Documents/ASPZ/PR4$ gcc t1.c -o t1_64 && ./t1_64
+Розмір size_t: 8 байтів 64 бітів
+Значення xa: 5000000
+Значення xb: 5000000
+Результат xa * xb (num): -1004630016
+size_t num: 18446744072704921600 байтів
+Спроба виділення пам'яті...
+Malloc повернув NULL
+```
+Попри те що значення int стало від'ємним, його unsigned розмір все ще становить 18446744072704921600 байтів (~16 ексабайта). 
+І виділення пам'яті malloc звичайно викличе відмову через обмеження в 128 тб.
+
+### Завдання 4.3 
+Чи є помилки у такому коді?
+```C
+void *ptr = NULL;
+while (<some-condition-is-true>) {
+    if (!ptr)
+        ptr = malloc(n);
+    [... <використання 'ptr'> ...]
+    free(ptr);
+}
+```
+Напишіть тестовий випадок, який продемонструє проблему та правильний варіант коду.
+
+На перший ітерації, if(!ptr) спрацьовує, malloc виділяє пам'ять і виконується free(ptr). Однак free виділяє пам'ять, однак ptr не стає NULL і все ще зберігає стару недійсну адресу.
+
+```С
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    int *ptr = NULL;
+    int с = 0;
+
+    while (с < 10) {
+        с++;
+        printf("\nітерація %d:\n", с);
+        printf("Значення ptr: %p\n", (void*)ptr);
+
+        if (!ptr) {
+            printf("!ptr...\n");
+            ptr = (int *)malloc(sizeof(int));
+            if (ptr == NULL) return 1;
+            *ptr = 67; 
+        } else {
+            printf("else\n");
+        }
+
+        printf("Значення ptr = %d\n", *ptr);
+
+        printf("free(ptr)...\n");
+        free(ptr);
+    }
+
+    return 0;
+}
+```
+```bash
+illson@nobara-pc:~/Documents/ASPZ/PR4$ gcc t1.c -o t1_64 && ./t1_64
+
+ітерація 1:
+Значення ptr: (nil)
+!ptr...
+Значення ptr = 67
+free(ptr)...
+
+ітерація 2:
+Значення ptr: 0x22569720
+else
+Значення ptr = 140649
+free(ptr)...
+free(): double free detected in tcache 2
+Aborted                    (core dumped) ./t1_64
+```
+Для виправлення помилки достатньо в кінці циклу прописати ptr = NULL;
+```bash
+illson@nobara-pc:~/Documents/ASPZ/PR4$ gcc t1.c -o t1_64 && ./t1_64
+
+ітерація 1:
+Значення ptr: (nil)
+!ptr...
+Значення ptr = 67
+free(ptr)...
+
+ітерація 2:
+Значення ptr: (nil)
+!ptr...
+Значення ptr = 67
+free(ptr)...
+
+ітерація 3:
+Значення ptr: (nil)
+!ptr...
+Значення ptr = 67
+free(ptr)...
+
+...
+```
