@@ -78,7 +78,7 @@ void create_procces(const char *name, int duration)
 
 void list_proccesses()
 {
-    printf("Активні процеси:\n");
+    printf("\nАктивні процеси:\n");
     int c = 0;
     for (int i = 0; i < MAX_PROCESSES; i++)
     {
@@ -113,11 +113,11 @@ void kill_procces(int pid_target)
     {
         if (kill(pid_target, SIGKILL) == 0)
         {
-            printf("[Процес %d] знищенно сигналом.\n", pid_target);
+            printf("[Процес %d] знищено сигналом.\n", pid_target);
         }
         else
         {
-            printf("Помилка: kill()");
+            printf("Помилка: kill()\n");
         }
     }
 }
@@ -127,6 +127,7 @@ int main(int argc, char const *argv[])
     struct sigaction sa;
     sa.sa_flags = SA_RESTART;
     sa.sa_handler = &handle_sigchld;
+    sigemptyset(&sa.sa_mask);
 
     if (sigaction(SIGCHLD, &sa, NULL) == -1)
     {
@@ -171,7 +172,7 @@ int main(int argc, char const *argv[])
             }
             else
             {
-                printf("-\n");
+                printf("Некоректний ввід\n");
             }
             break;
         case 'q':
@@ -203,7 +204,7 @@ int main(int argc, char const *argv[])
 
             break;
         default:
-            printf("-");
+            printf("Невідома команда. \n");
         }
     }
     return 0;
