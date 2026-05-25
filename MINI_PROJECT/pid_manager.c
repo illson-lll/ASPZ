@@ -59,7 +59,7 @@ void create_procces(const char *name, int duration)
 
     if (cpid < 0)
     {
-        printf("Помилка: fork().\n");
+        perror("Помилка: fork().\n");
         return;
     }
     else if (cpid == 0)
@@ -89,7 +89,7 @@ void list_proccesses()
         }
     }
     if (c == 0)
-    {
+    { 
         printf("Фонові процеси відсутні.\n");
     }
     printf("\n");
@@ -117,7 +117,7 @@ void kill_procces(int pid_target)
         }
         else
         {
-            printf("Помилка: kill()\n");
+            perror("Помилка: kill()");
         }
     }
 }
